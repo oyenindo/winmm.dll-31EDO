@@ -1,0 +1,30 @@
+# Simpan sebagai  .github/workflows/build-winmm-proxy.yml  di repo GitHub,
+# lalu jalankan manual (Actions -> build-winmm-proxy -> Run workflow).
+# Hasil: artifact winmm_x64 dan winmm_x86 (DLL siap pakai).
+name: build-winmm-proxy
+on:
+  workflow_dispatch:
+  push:
+    paths: ["winmm_proxy/**"]
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, x86]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Generate export list from system winmm.dll
+        shell: cmd
+        run: python winmm_proxy\gen_winmm_exports.py
+      - name: Build
+        shell: cmd
+        working-directory: winmm_proxy
+        run: cl /nologo /O2 /LD winmm_proxy.c /Fe:winmm_${{ matrix.arch }}.dll /link ws2_32.lib user32.lib kernel32.lib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winmm_${{ matrix.arch }}
+          path: winmm_proxy/winmm_${{ matrix.arch }}.dll
